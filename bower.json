@@ -1,0 +1,17 @@
+{
+    "name": "binarta.calendar.events.angular",
+    "main": "./src/calendar.events.js",
+    "dependencies": {
+        "angular": "1.2.5"
+    },
+    "devDependencies": {
+        "angular-mocks": "1.2.5"
+    },
+    "ignore": [
+        "**/.*",
+        "node_modules",
+        "bower_components",
+        "test",
+        "tests"
+    ]
+}
