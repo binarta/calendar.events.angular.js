@@ -4,7 +4,7 @@ describe('calendar.events', function () {
     var presenter;
 
     beforeEach(module('calendar.events'));
-    beforeEach(module('calendar.events.connector'));
+    beforeEach(module('calendar.events.mock.ui'));
     beforeEach(module('angular.usecase.adapter'));
     beforeEach(module('rest.client'));
     beforeEach(module('notifications'));
@@ -20,9 +20,8 @@ describe('calendar.events', function () {
     describe('provides ListCalendarEventsController', function() {
         var connector;
 
-        beforeEach(inject(function($controller, ui) {
+        beforeEach(inject(function($controller) {
             ctrl = $controller('ListCalendarEventsController', {$scope:$scope, activeUserHasPermission: permissionCheck});
-            connector = ui.connector;
 
         }));
 
@@ -31,6 +30,11 @@ describe('calendar.events', function () {
         });
 
         describe('which when wired to ui', function() {
+            beforeEach(inject(function(ui) {
+                $scope.connectUI('mockUIConnector');
+                connector = ui.connector;
+            }));
+
             it('exposes $scope on connector', function() {
                 expect(connector.$scope).toEqual($scope);
             });
@@ -46,7 +50,7 @@ describe('calendar.events', function () {
             });
 
             describe('when showing the create event ui', function() {
-                var date = moment().toString();
+                var date = moment();
                 var allDay = true;
 
                 beforeEach(function() {
@@ -63,7 +67,7 @@ describe('calendar.events', function () {
                     });
 
                     it('then start date gets populated', function() {
-                        expect($scope.eventTemplate.start).toEqual(moment(date));
+                        expect(moment($scope.eventTemplate.start).format()).toEqual(moment(date).format());
                     });
 
                     it('and end date gets populated', function() {
@@ -159,59 +163,59 @@ describe('calendar.events', function () {
                     }));
                 });
             });
-        });
 
-        describe('subscribes to some events', function() {
-            beforeEach(function() {
-                $scope.eventTemplate = 'my-custom-event';
-            });
-
-            it('test', function() {
-                expect(topicRegistry['calendar.event.created']).toBeDefined();
-                expect(topicRegistry['calendar.event.removed']).toBeDefined();
-                expect(topicRegistry['calendar.event.updated']).toBeDefined();
-            });
-
-            describe('when firing calendar.event.created', function() {
+            describe('subscribes to some events', function() {
                 beforeEach(function() {
-                    topicRegistry['calendar.event.created']();
-                });
-//
-                it('then the template is rendered on the ui', function() {
-                    expect(connector.rendered).toEqual('my-custom-event');
+                    $scope.eventTemplate = 'my-custom-event';
                 });
 
-                it('then the template is reset', function() {
-                    expect($scope.eventTemplate).toEqual({});
+                it('test', function() {
+                    expect(topicRegistry['calendar.event.created']).toBeDefined();
+                    expect(topicRegistry['calendar.event.removed']).toBeDefined();
+                    expect(topicRegistry['calendar.event.updated']).toBeDefined();
                 });
 
-                it('and the ui is hidden', function() {
-                    expect(connector.hidden).toBeTruthy();
-                })
-            });
+                describe('when firing calendar.event.created', function() {
+                    beforeEach(function() {
+                        topicRegistry['calendar.event.created']();
+                    });
 
-            describe('when firing calendar.event.removed', function() {
-                beforeEach(function() {
-                    topicRegistry['calendar.event.removed']();
+                    it('then the template is rendered on the ui', function() {
+                        expect(connector.rendered).toEqual('my-custom-event');
+                    });
+
+                    it('then the template is reset', function() {
+                        expect($scope.eventTemplate).toEqual({});
+                    });
+
+                    it('and the ui is hidden', function() {
+                        expect(connector.hidden).toBeTruthy();
+                    })
                 });
 
-                it('the ui should remove the event', function() {
-                    expect(connector.removed).toEqual('my-custom-event');
-                });
-            });
+                describe('when firing calendar.event.removed', function() {
+                    beforeEach(function() {
+                        topicRegistry['calendar.event.removed']();
+                    });
 
-            describe('when firing calendar.event.updated', function() {
-                beforeEach(function() {
-                    topicRegistry['calendar.event.updated']();
-                });
-
-                it('then hide the ui', function() {
-                    expect(connector.hidden).toBeTruthy();
+                    it('the ui should remove the event', function() {
+                        expect(connector.removed).toEqual('my-custom-event');
+                    });
                 });
 
-                it('then ui is refreshed', function() {
-                    expect(connector.refreshed).toBeTruthy();
-                })
+                describe('when firing calendar.event.updated', function() {
+                    beforeEach(function() {
+                        topicRegistry['calendar.event.updated']();
+                    });
+
+                    it('then hide the ui', function() {
+                        expect(connector.hidden).toBeTruthy();
+                    });
+
+                    it('then ui is refreshed', function() {
+                        expect(connector.refreshed).toBeTruthy();
+                    })
+                });
             });
         });
     });
@@ -268,11 +272,11 @@ describe('calendar.events', function () {
     });
 });
 
-angular.module('calendar.events.connector', [])
+angular.module('calendar.events.mock.ui', [])
     .factory('ui', function() {
         return {};
     })
-    .factory('connectWithCalendarEventsUi', function(ui) {
+    .factory('mockUIConnector', function(ui) {
         return function(connect) {
             var spy = {eventSources:[]};
             var connector = {
