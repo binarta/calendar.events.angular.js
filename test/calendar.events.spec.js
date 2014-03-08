@@ -1,17 +1,14 @@
 describe('calendar.events', function () {
-    var $scope, ctrl, events, rest, topicRegistry;
+    var $scope, ctrl, events, topicRegistry;
     var permissionCheck;
     var presenter;
 
     beforeEach(module('calendar.events'));
     beforeEach(module('calendar.events.mock.ui'));
-    beforeEach(module('angular.usecase.adapter'));
-    beforeEach(module('rest.client'));
     beforeEach(module('notifications'));
-    beforeEach(inject(function($rootScope, calendarEvents, restServiceHandler, topicRegistryMock) {
+    beforeEach(inject(function($rootScope, calendarEvents, topicRegistryMock) {
         $scope = $rootScope.$new();
         events = calendarEvents;
-        rest = restServiceHandler;
         topicRegistry = topicRegistryMock;
         permissionCheck = jasmine.createSpy('activeHasUserPermission');
         presenter = jasmine.createSpy('presenter');
@@ -50,56 +47,99 @@ describe('calendar.events', function () {
             });
 
             describe('when showing the create event ui', function() {
-                var date = moment();
+                var date = moment().hour(1);
                 var allDay = true;
 
-                beforeEach(function() {
+                function show() {
                     $scope.showCreateEvent(date, allDay, presenter);
-                });
+                }
 
-                it('permission checker is called for calendar.event.add', function() {
-                    expect(permissionCheck.calls[0].args[1]).toEqual('calendar.event.add');
-                });
+                function hasPermission() {
+                    permissionCheck.calls[0].args[0].yes();
+                }
 
-                describe('and user has permission', function() {
-                    beforeEach(function() {
-                        permissionCheck.calls[0].args[0].yes();
+                function permissionChecked() {
+                    it('permission checker is called for calendar.event.add', function() {
+                        expect(permissionCheck.calls[0].args[1]).toEqual('calendar.event.add');
                     });
+                }
 
-                    it('then start date gets populated', function() {
-                        expect(moment($scope.eventTemplate.start).format()).toEqual(moment(date).format());
-                    });
-
+                function endDateAddsOneHour() {
                     it('and end date gets populated', function() {
-                        expect($scope.eventTemplate.end).toEqual(moment(date).add('days', 1));
+                        expect($scope.eventTemplate.end).toEqual(moment($scope.eventTemplate.start).add('hours', 1).format());
+                    });
+                }
+
+                describe('and user selected a specific time', function() {
+                    beforeEach(function() {
+                        allDay = false;
+                        show();
                     });
 
-                    it('and presenter gets called', function() {
-                        expect(presenter.calls[0]).toBeDefined();
-                    });
+                    permissionChecked();
 
-                    describe('when event is not all day', function() {
+                    describe('and user has permission', function() {
                         beforeEach(function() {
-                            allDay = false;
-                            $scope.resetTemplate();
-                            $scope.showCreateEvent(date, allDay);
+                            hasPermission();
                         });
 
-                        it('then end date is not populated', function() {
+                        it('start date is selected date and time', function() {
+                            expect($scope.eventTemplate.start).toEqual(moment(date).format());
+                        });
+
+                        endDateAddsOneHour();
+                    });
+                });
+
+                describe('and user selected a day', function() {
+                    beforeEach(function() {
+                        allDay = true;
+                        show();
+                    });
+
+                    permissionChecked();
+
+                    describe('and user has permission', function() {
+                        beforeEach(function() {
+                            hasPermission();
+                        });
+
+                        it('then start date gets populated', function() {
+                            expect($scope.eventTemplate.start).toEqual(moment(date).hours(moment().hour()).format());
+                        });
+
+                        endDateAddsOneHour();
+
+                        it('and presenter gets called', function() {
+                            expect(presenter.calls[0]).toBeDefined();
+                        });
+
+                        describe('when event is not all day', function() {
+                            beforeEach(function() {
+                                allDay = false;
+                                $scope.resetTemplate();
+                                $scope.showCreateEvent(date, allDay);
+                            });
+
+                            it('then end date is not populated', function() {
+                                expect($scope.eventTemplate.end).toBeUndefined();
+                            })
+                        });
+                    });
+
+                    describe('and user does not have permission', function() {
+                        beforeEach(function() {
+                            permissionCheck.calls[0].args[0].no();
+                        });
+
+                        it('nothing happens', function() {
+                            expect($scope.eventTemplate.start).toBeUndefined();
                             expect($scope.eventTemplate.end).toBeUndefined();
                         })
                     });
                 });
 
-                describe('and user does not have permission', function() {
-                    beforeEach(function() {
-                        permissionCheck.calls[0].args[0].no();
-                    });
 
-                    it('nothing happens', function() {
-                        expect(true).toBeTruthy();
-                    })
-                });
             });
 
             describe('which when given an event template', function() {
@@ -118,7 +158,61 @@ describe('calendar.events', function () {
                     });
 
                     it('then the template is passed to the event writer', function() {
-                        expect(events).toEqual([{title: 'my-custom-event', id: 0, scope: $scope}]);
+                        expect(events).toEqual([{title: 'my-custom-event', id: 0}]);
+                    });
+
+                    it('test', inject(function(metadata) {
+                        expect(metadata.$scope).toEqual($scope);
+                    }));
+
+                    describe('', function() {
+                        beforeEach(inject(function(metadata) {
+                            $scope.eventTemplate = 'my-event';
+                            metadata.presenter.success();
+                        }));
+
+                        it('renders event', function() {
+                            expect(connector.rendered).toEqual('my-event');
+                        });
+
+                        it('then the template is reset', function() {
+                            expect($scope.eventTemplate).toEqual({});
+                        });
+
+                        it('and the ui is hidden', function() {
+                            expect(connector.hidden).toBeTruthy();
+                        })
+                    });
+                });
+
+                describe('and creating another event from the template', function() {
+                    beforeEach(function() {
+                        $scope.createAnother();
+                    });
+
+                    it('then the template is passed to the event writer', function() {
+                        expect(events).toEqual([{title: 'my-custom-event', id: 0}]);
+                    });
+
+                    it('test', inject(function(metadata) {
+                        expect(metadata.$scope).toEqual($scope);
+                    }));
+
+                    describe('', function() {
+                        beforeEach(inject(function(metadata) {
+                            $scope.eventTemplate = {type:'type'};
+                            metadata.presenter.success();
+                        }));
+
+                        it('test', function() {
+                            expect(connector.rendered).toEqual({type:'type'});
+                        });
+
+                        it('test', function() {
+                            expect($scope.eventTemplate.start).toEqual(moment().minutes(0).format());
+                            expect($scope.eventTemplate.end).toEqual(moment().minutes(0).add(1, 'hours').format());
+                            expect($scope.eventTemplate.type).toEqual('type');
+                        });
                     });
                 });
             });
@@ -170,27 +264,9 @@ describe('calendar.events', function () {
                 });
 
                 it('test', function() {
-                    expect(topicRegistry['calendar.event.created']).toBeDefined();
+                    expect(topicRegistry['calendar.event.created']).toBeUndefined();
                     expect(topicRegistry['calendar.event.removed']).toBeDefined();
                     expect(topicRegistry['calendar.event.updated']).toBeDefined();
-                });
-
-                describe('when firing calendar.event.created', function() {
-                    beforeEach(function() {
-                        topicRegistry['calendar.event.created']();
-                    });
-
-                    it('then the template is rendered on the ui', function() {
-                        expect(connector.rendered).toEqual('my-custom-event');
-                    });
-
-                    it('then the template is reset', function() {
-                        expect($scope.eventTemplate).toEqual({});
-                    });
-
-                    it('and the ui is hidden', function() {
-                        expect(connector.hidden).toBeTruthy();
-                    })
                 });
 
                 describe('when firing calendar.event.removed', function() {
@@ -222,50 +298,173 @@ describe('calendar.events', function () {
 
     describe('ViewCalendarEventController', function() {
         var id = 'id';
-        var usecase;
-        var context;
-        var config;
+        var viewer = jasmine.createSpy('viewer');
 
-        beforeEach(inject(function($controller, usecaseAdapterFactory, restServiceHandler) {
-            context = {};
-            config = {};
-            usecase = usecaseAdapterFactory;
-            usecase.andReturn(context);
-            ctrl = $controller(ViewCalendarEventController, {$scope: $scope, config: config});
+        beforeEach(inject(function($controller) {
+            ctrl = $controller(ViewCalendarEventController, {$scope: $scope, calendarEventViewer: viewer});
         }));
 
         describe('on init', function() {
 
             beforeEach(function() {
-                config.namespace = 'namespace';
-                config.baseUri = 'base-uri/';
                 $scope.init(id);
             });
 
-            it('then context is created', function() {
-                expect(usecase.calls[0].args[0]).toEqual($scope);
+            it('viewer is called', function() {
+                expect(viewer.calls[0].args[0]).toEqual(id);
+                expect(viewer.calls[0].args[1]).toEqual($scope);
+            });
+        });
+
+        describe('on check for catalog item', function() {
+            it('when item id is valid', function() {
+                expect($scope.isCatalogItem('/movies/id')).toBeTruthy();
             });
 
-            it('http params are populated', function() {
-                expect(context.params.method).toEqual('GET');
-                expect(context.params.headers['x-namespace']).toEqual(config.namespace);
-                expect(context.params.url).toEqual(config.baseUri + 'api/entity/calendarevent/'+id);
+            it('when item id is regular text', function() {
+                expect($scope.isCatalogItem('random text')).toBeFalsy();
+            })
+        });
+
+    });
+
+    describe('IsCatalogItemPredicateFactory', function() {
+        var predicate;
+
+        beforeEach(inject(function(isCatalogItemPredicate) {
+            predicate = isCatalogItemPredicate;
+        }));
+
+        it('when valid catalog item id is provided', function() {
+            expect(predicate('/movies/id')).toBeTruthy();
+        });
+
+        it('when no catalog item id is provided', function() {
+            expect(predicate('Some random description')).toBeFalsy();
+        })
+    });
+
+    describe('CalendarEventWriterHelperFactory', function() {
+        var helper;
+        var createPresenter = jasmine.createSpy('createPresenter');
+        var createAnotherPresenter = jasmine.createSpy('createAnotherPresenter');
+
+        beforeEach(inject(function(calendarEventWriterHelper) {
+            helper = calendarEventWriterHelper;
+            $scope.eventTemplate = {title:'my-custom-event'};
+        }));
+
+        describe('on create event', function() {
+            beforeEach(function() {
+                helper.create($scope, createPresenter);
+                $scope.createEvent();
             });
 
-            it('http call is executec', function() {
-                expect(rest.calls[0].args[0]).toEqual(context);
+            it('then the template is passed to the event writer', function() {
+                expect(events).toEqual([{title: 'my-custom-event', id: 0}]);
             });
 
-            describe('on success', function() {
-                var payload;
+            it('then the scope gets passed to the writer', inject(function(metadata) {
+                expect(metadata.$scope).toEqual($scope);
+            }));
 
-                beforeEach(function() {
-                    payload = {};
-                    context.success(payload);
+            it('then the callback gets passed to the writer', inject(function(metadata) {
+                expect(metadata.presenter).toEqual(createPresenter);
+            }));
+        });
+
+        describe('on create another', function() {
+            beforeEach(function() {
+                helper.createAnother($scope, createAnotherPresenter);
+                $scope.createAnother();
+            });
+
+            it('then the template is passed to the event writer', function() {
+                expect(events).toEqual([{title: 'my-custom-event', id: 0}]);
+            });
+
+            it('then the scope gets passed to the writer', inject(function(metadata) {
+                expect(metadata.$scope).toEqual($scope);
+            }));
+
+            it('then the callback gets passed to the writer', inject(function(metadata) {
+                expect(metadata.presenter).toEqual(createAnotherPresenter);
+            }));
+        });
+    });
+
+    describe('AddCalendarEventController', function() {
+        var presenter;
+        beforeEach(inject(function($controller) {
+            presenter = jasmine.createSpy('presenter');
+            ctrl = $controller(AddCalendarEventController, {$scope:$scope, addCalendarEventPresenter: presenter});
+        }));
+
+        describe('on show', function() {
+            beforeEach(function() {
+                $scope.path = '/movie/id';
+                $scope.show();
+            });
+
+            it('event template receives initial values', function() {
+                expect($scope.eventTemplate.start).toEqual(moment().minutes(0).format());
+                expect($scope.eventTemplate.end).toEqual(moment().minutes(0).add(1, 'hours').format());
+                expect($scope.eventTemplate.movie).toEqual($scope.path);
+            });
+
+            it('presenter is called', function() {
+                expect(presenter.calls[0].args[0]).toEqual($scope);
+            })
+        });
+
+        describe('on create', function() {
+            var hidden = false;
+
+            beforeEach(function() {
+                $scope.hide = function() {
+                    hidden = true;
+                };
+                $scope.eventTemplate = {};
+                $scope.locale = 'locale';
+                $scope.createEvent();
+            });
+
+            describe('when presenting success', function() {
+                beforeEach(inject(function(metadata) {
+                    metadata.presenter.success();
+                }));
+
+                it('ui is hidden', function() {
+                    expect(hidden).toBeTruthy();
                 });
 
-                it('payload gets put on scope as event', function() {
-                    expect($scope.event).toEqual(payload);
+                it('redirect to program', inject(function($location) {
+                    expect($location.path()).toEqual('/' + $scope.locale + '/festival/program');
+                }));
+            });
+        });
+
+        describe('on create another', function() {
+            beforeEach(function() {
+                $scope.eventTemplate = {type:'type'};
+                $scope.path = '/movies/id';
+                $scope.createAnother();
+            });
+
+            describe('when presenting success', function() {
+                beforeEach(inject(function(metadata) {
+                    metadata.presenter.success();
+                }));
+
+                it('fires notification', inject(function(topicMessageDispatcherMock) {
+                    expect(topicMessageDispatcherMock['system.success']).toEqual({message:'calendar.event.created.success', default:'Show has been added'})
+                }));
+
+                it('test', function() {
+                    expect($scope.eventTemplate.type).toEqual('type');
+                    expect($scope.eventTemplate.start).toEqual(moment().minutes(0).format());
+                    expect($scope.eventTemplate.end).toEqual(moment().minutes(0).add(1, 'hours').format());
+                    expect($scope.eventTemplate.movie).toEqual($scope.path);
                 })
             });
         });
@@ -323,12 +522,16 @@ angular.module('calendar.events.sources', [])
             return id++;
         }
     })
-    .factory('calendarEventWriter', function(calendarEvents, idgen) {
-        return function(evt, $scope) {
+    .factory('calendarEventWriter', function(calendarEvents, idgen, metadata) {
+        return function(evt, $scope, p) {
+            metadata.$scope = $scope;
+            metadata.presenter = p;
             evt.id = idgen();
-            evt.scope = $scope;
             calendarEvents.push(evt);
         }
+    })
+    .factory('metadata', function() {
+        return {};
     })
     .factory('calendarEventDeleter', function(calendarEvents) {
         return function(args) {

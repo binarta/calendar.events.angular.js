@@ -1,8 +1,11 @@
 angular.module('calendar.events', ['calendar.events.sources'])
-    .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventWriter', 'calendarEventDeleter', 'topicRegistry', 'activeUserHasPermission', 'calendarEventUpdater', ListCalendarEventsController])
-    .controller('ViewCalendarEventController', ['$scope', 'usecaseAdapterFactory', 'config', 'restServiceHandler', ViewCalendarEventController]);
+    .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'topicRegistry', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', ListCalendarEventsController])
+    .controller('ViewCalendarEventController', ['$scope', 'isCatalogItemPredicate', 'calendarEventViewer', ViewCalendarEventController])
+    .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', '$location', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', AddCalendarEventController])
+    .factory('isCatalogItemPredicate', [IsCatalogItemPredicateFactory])
+    .factory('calendarEventWriterHelper', ['calendarEventWriter', CalendarEventWriterHelperFactory]);
 
-function ListCalendarEventsController($injector, $scope, calendarEventSourceFactory, calendarEventWriter, calendarEventDeleter, topicRegistry, activeUserHasPermission, calendarEventUpdater) {
+function ListCalendarEventsController($injector, $scope, calendarEventSourceFactory, calendarEventDeleter, topicRegistry, activeUserHasPermission, calendarEventUpdater, calendarEventWriterHelper) {
     $scope.resetTemplate = function () {
         $scope.eventTemplate = {};
     };
@@ -17,17 +20,18 @@ function ListCalendarEventsController($injector, $scope, calendarEventSourceFact
             $scope.showCreateEvent = function(date, allDay, presenter) {
                 activeUserHasPermission({
                     yes: function() {
-                        $scope.eventTemplate.start = moment(date);
-                        if (allDay) $scope.eventTemplate.end = moment(date).add('days', 1);
+                        if (allDay) {
+                            $scope.eventTemplate.start = moment(date).hour(moment().hour()).format();
+                        } else {
+                            $scope.eventTemplate.start = moment(date).format();
+                        }
+                        $scope.eventTemplate.end = moment($scope.eventTemplate.start).add('hours', 1).format();
                         presenter();
                     },
                     no: function() {}
                 }, 'calendar.event.add');
             };
-            $scope.createEvent = function() {
-                var evt = $scope.eventTemplate;
-                calendarEventWriter(evt, $scope);
-            };
+            addWriterUtils();
             $scope.openEvent = function(evt) {
                 $scope.evt = evt;
                 connector.openEvent(evt);
@@ -39,12 +43,6 @@ function ListCalendarEventsController($injector, $scope, calendarEventSourceFact
                 calendarEventUpdater(event);
             };
 
-            topicRegistry.subscribe('calendar.event.created', function() {
-                connector.renderEvent($scope.eventTemplate);
-                $scope.resetTemplate();
-                $scope.hide();
-            });
-
             topicRegistry.subscribe('calendar.event.removed', function() {
                 connector.removeEvent($scope.eventTemplate);
             });
@@ -53,23 +51,78 @@ function ListCalendarEventsController($injector, $scope, calendarEventSourceFact
                 $scope.hide();
                 connector.refresh();
             });
+
+            function addWriterUtils() {
+                calendarEventWriterHelper.create($scope, {success: function() {
+                    connector.renderEvent($scope.eventTemplate);
+                    $scope.resetTemplate();
+                    $scope.hide();
+                }});
+                calendarEventWriterHelper.createAnother($scope, {success: function() {
+                    connector.renderEvent($scope.eventTemplate);
+                    var type = $scope.eventTemplate.type;
+                    $scope.resetTemplate();
+                    $scope.eventTemplate.start = moment().minutes(0).format();
+                    $scope.eventTemplate.end = moment().minutes(0).add(1, 'hours').format();
+                    $scope.eventTemplate.type = type;
+                }});
+            }
         });
     };
 }
 
-function ViewCalendarEventController($scope, usecaseAdapterFactory, config, restServiceHandler) {
+function ViewCalendarEventController($scope, isCatalogItemPredicate, calendarEventViewer) {
     $scope.init = function(id) {
-        var context = usecaseAdapterFactory($scope);
-        context.params = {
-            method:'GET',
-            url: (config.baseUri || '') + 'api/entity/calendarevent/'+id,
-            headers: {
-                'x-namespace': config.namespace
+        calendarEventViewer(id, $scope);
+    };
+
+    $scope.isCatalogItem = isCatalogItemPredicate;
+}
+
+function AddCalendarEventController($scope, topicMessageDispatcher, $location, isCatalogItemPredicate, calendarEventWriterHelper, addCalendarEventPresenter) {
+    calendarEventWriterHelper.create($scope, {success: function() {
+        $scope.hide();
+        $location.path($scope.locale + '/festival/program');
+    }});
+
+    calendarEventWriterHelper.createAnother($scope, {success: function() {
+        var type = $scope.eventTemplate.type;
+        topicMessageDispatcher.fire('system.success', {message: 'calendar.event.created.success', default: 'Show has been added'});
+        $scope.eventTemplate = {};
+        $scope.eventTemplate.start = moment().minutes(0).format();
+        $scope.eventTemplate.end = moment().minutes(0).add(1, 'hours').format();
+        $scope.eventTemplate.movie = $scope.path;
+        $scope.eventTemplate.type = type;
+    }});
+
+    $scope.show = function() {
+        $scope.eventTemplate = {};
+        $scope.eventTemplate.start = moment().minutes(0).format();
+        $scope.eventTemplate.end = moment().minutes(0).add(1, 'hours').format();
+        $scope.eventTemplate.movie = $scope.path;
+        addCalendarEventPresenter($scope);
+    };
+
+    $scope.isCatalogItem = isCatalogItemPredicate;
+}
+
+function IsCatalogItemPredicateFactory() {
+    return function(id) {
+        return /^\/.*\/.*$/.test(id);
+    }
+}
+
+function CalendarEventWriterHelperFactory(calendarEventWriter) {
+    return {
+        create: function($scope, presenter) {
+            $scope.createEvent = function() {
+                calendarEventWriter($scope.eventTemplate, $scope, presenter);
             }
-        };
-        context.success = function(payload) {
-            $scope.event = payload;
-        };
-        restServiceHandler(context);
+        },
+        createAnother: function($scope, presenter) {
+            $scope.createAnother = function() {
+                calendarEventWriter($scope.eventTemplate, $scope, presenter);
+            }
+        }
     }
 }
