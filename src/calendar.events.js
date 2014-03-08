@@ -4,7 +4,6 @@ angular.module('calendar.events', ['calendar.events.sources'])
 
 function ListCalendarEventsController($injector, $scope, calendarEventSourceFactory, calendarEventWriter, calendarEventDeleter, topicRegistry, activeUserHasPermission, calendarEventUpdater) {
     $scope.resetTemplate = function () {
-        console.log('resetTemplate(' + JSON.stringify($scope.eventTemplate) + ')');
         $scope.eventTemplate = {};
     };
     $scope.resetTemplate();
