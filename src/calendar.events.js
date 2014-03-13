@@ -2,6 +2,7 @@ angular.module('calendar.events', ['calendar.events.sources'])
     .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'topicRegistry', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', ListCalendarEventsController])
     .controller('ViewCalendarEventController', ['$scope', 'isCatalogItemPredicate', 'calendarEventViewer', ViewCalendarEventController])
     .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', '$location', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', AddCalendarEventController])
+    .controller('UpdateCalendarEventController', ['$scope', 'calendarEventUpdater', 'topicMessageDispatcher', UpdateCalendarEventController])
     .factory('isCatalogItemPredicate', [IsCatalogItemPredicateFactory])
     .factory('calendarEventWriterHelper', ['calendarEventWriter', CalendarEventWriterHelperFactory]);
 
@@ -37,20 +38,20 @@ function ListCalendarEventsController($injector, $scope, calendarEventSourceFact
                 connector.openEvent(evt);
             };
             $scope.deleteEvent = function() {
-                calendarEventDeleter($scope.evt);
+                calendarEventDeleter($scope.evt, {
+                    success: function() {
+                        connector.removeEvent($scope.evt);
+                    }
+                });
             };
             $scope.updateEvent = function(event) {
-                calendarEventUpdater(event);
+                calendarEventUpdater(event, $scope, {
+                    success: function() {
+                        $scope.hide();
+                        connector.refresh();
+                    }
+                });
             };
-
-            topicRegistry.subscribe('calendar.event.removed', function() {
-                connector.removeEvent($scope.eventTemplate);
-            });
-
-            topicRegistry.subscribe('calendar.event.updated', function() {
-                $scope.hide();
-                connector.refresh();
-            });
 
             function addWriterUtils() {
                 calendarEventWriterHelper.create($scope, {success: function() {
@@ -124,5 +125,16 @@ function CalendarEventWriterHelperFactory(calendarEventWriter) {
                 calendarEventWriter($scope.eventTemplate, $scope, presenter);
             }
         }
+    }
+}
+
+function UpdateCalendarEventController($scope, calendarEventUpdater, topicMessageDispatcher) {
+    $scope.updateEvent = function(event) {
+        calendarEventUpdater(event, $scope, {
+            success: function() {
+                $scope.hide();
+                topicMessageDispatcher.fire('calendar.event.updated', 'ok');
+            }
+        });
     }
 }

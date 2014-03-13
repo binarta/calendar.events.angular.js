@@ -240,6 +240,16 @@ describe('calendar.events', function () {
                     it('then the event is removed from the backing storage', inject(function(calendarEvents) {
                         expect(calendarEvents).toEqual([{id:'alternate-evt'}]);
                     }));
+
+                    describe('on success callback', function() {
+                        beforeEach(inject(function(metadata) {
+                            metadata.presenter.success();
+                        }));
+
+                        it('ui connector removes event', function() {
+                            expect(connector.removed).toEqual({id:'evt'})
+                        })
+                    });
                 });
 
                 describe('when updating the event', function() {
@@ -255,42 +265,24 @@ describe('calendar.events', function () {
                             {id:'id2', field:'old', field2:'old2'}
                         ]);
                     }));
-                });
-            });
 
-            describe('subscribes to some events', function() {
-                beforeEach(function() {
-                    $scope.eventTemplate = 'my-custom-event';
-                });
+                    it('$scope is passed to updater', inject(function(metadata) {
+                        expect(metadata.$scope).toEqual($scope);
+                    }));
 
-                it('test', function() {
-                    expect(topicRegistry['calendar.event.created']).toBeUndefined();
-                    expect(topicRegistry['calendar.event.removed']).toBeDefined();
-                    expect(topicRegistry['calendar.event.updated']).toBeDefined();
-                });
+                    describe('success callback', function() {
+                        beforeEach(inject(function(metadata) {
+                            metadata.presenter.success();
+                        }));
 
-                describe('when firing calendar.event.removed', function() {
-                    beforeEach(function() {
-                        topicRegistry['calendar.event.removed']();
+                        it('ui gets hidden', function() {
+                            expect(connector.hidden).toBeTruthy();
+                        });
+
+                        it('ui connector refreshes', function() {
+                            expect(connector.refreshed).toBeTruthy();
+                        })
                     });
-
-                    it('the ui should remove the event', function() {
-                        expect(connector.removed).toEqual('my-custom-event');
-                    });
-                });
-
-                describe('when firing calendar.event.updated', function() {
-                    beforeEach(function() {
-                        topicRegistry['calendar.event.updated']();
-                    });
-
-                    it('then hide the ui', function() {
-                        expect(connector.hidden).toBeTruthy();
-                    });
-
-                    it('then ui is refreshed', function() {
-                        expect(connector.refreshed).toBeTruthy();
-                    })
                 });
             });
         });
@@ -469,6 +461,50 @@ describe('calendar.events', function () {
             });
         });
     });
+
+    describe('UpdateCalendarEventController', function() {
+        beforeEach(inject(function($controller) {
+            ctrl = $controller(UpdateCalendarEventController, {$scope: $scope});
+        }));
+
+        describe('on update', function() {
+            var hidden = false;
+
+            beforeEach(inject(function(calendarEvents) {
+                $scope.hide = function() {
+                    hidden = !hidden;
+                };
+                calendarEvents.push({id:'id', field:'old', field2:'old2'});
+                calendarEvents.push({id:'id2', field:'old', field2:'old2'});
+                $scope.updateEvent({id:'id', field:'value', field2:'value2'});
+            }));
+
+            it('then the event is updated', inject(function(calendarEvents) {
+                expect(calendarEvents).toEqual([
+                    {id:'id', field:'value', field2:'value2'},
+                    {id:'id2', field:'old', field2:'old2'}
+                ]);
+            }));
+
+            it('$scope is passed to updater', inject(function(metadata) {
+                expect(metadata.$scope).toEqual($scope);
+            }));
+
+            describe('on success callback', function() {
+                beforeEach(inject(function(metadata) {
+                    metadata.presenter.success();
+                }));
+
+                it('hide ui', function() {
+                    expect(hidden).toBeTruthy();
+                });
+
+                it('notification is fired', inject(function(topicMessageDispatcherMock) {
+                    expect(topicMessageDispatcherMock['calendar.event.updated']).toEqual('ok');
+                }))
+            });
+        });
+    });
 });
 
 angular.module('calendar.events.mock.ui', [])
@@ -533,15 +569,18 @@ angular.module('calendar.events.sources', [])
     .factory('metadata', function() {
         return {};
     })
-    .factory('calendarEventDeleter', function(calendarEvents) {
-        return function(args) {
+    .factory('calendarEventDeleter', function(calendarEvents, metadata) {
+        return function(args, presenter) {
+            metadata.presenter = presenter;
             calendarEvents.splice(calendarEvents.reduce(function (p, c, i) {
                 return c.id == args.id ? i : p;
             }, -1), 1);
         }
     })
-    .factory('calendarEventUpdater', function(calendarEvents) {
-        return function(event) {
+    .factory('calendarEventUpdater', function(calendarEvents, metadata) {
+        return function(event, $scope, presenter) {
+            metadata.$scope = $scope;
+            metadata.presenter = presenter;
             var index = calendarEvents.reduce(function(previous, current, index) {
                 return current.id == event.id ? index : previous;
             }, -1);
