@@ -505,6 +505,34 @@ describe('calendar.events', function () {
             });
         });
     });
+
+    describe('DeleteCalendarEventController', function() {
+        beforeEach(inject(function($controller) {
+            ctrl = $controller(DeleteCalendarEventController, {$scope:$scope});
+        }));
+
+        describe('on delete', function() {
+            beforeEach(inject(function(calendarEvents) {
+                calendarEvents.push({id:'id'});
+                $scope.deleteEvent({id: 'id'});
+            }));
+
+            it('event is removed', inject(function(calendarEvents) {
+                expect(calendarEvents).toEqual([]);
+            }));
+
+            describe('on successfull delete', function() {
+                beforeEach(inject(function(metadata) {
+                    metadata.presenter.success();
+                }));
+
+                it('calendar.event.deleted is fired', inject(function(topicMessageDispatcherMock) {
+                    expect(topicMessageDispatcherMock['calendar.event.deleted']).toEqual({id:'id'});
+                }));
+            });
+
+        });
+    });
 });
 
 angular.module('calendar.events.mock.ui', [])

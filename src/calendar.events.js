@@ -3,6 +3,7 @@ angular.module('calendar.events', ['calendar.events.sources'])
     .controller('ViewCalendarEventController', ['$scope', 'isCatalogItemPredicate', 'calendarEventViewer', ViewCalendarEventController])
     .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', '$location', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', AddCalendarEventController])
     .controller('UpdateCalendarEventController', ['$scope', 'calendarEventUpdater', 'topicMessageDispatcher', UpdateCalendarEventController])
+    .controller('DeleteCalendarEventController', ['$scope', 'calendarEventDeleter', 'topicMessageDispatcher', DeleteCalendarEventController])
     .factory('isCatalogItemPredicate', [IsCatalogItemPredicateFactory])
     .factory('calendarEventWriterHelper', ['calendarEventWriter', CalendarEventWriterHelperFactory]);
 
@@ -137,4 +138,14 @@ function UpdateCalendarEventController($scope, calendarEventUpdater, topicMessag
             }
         });
     }
+}
+
+function DeleteCalendarEventController($scope, calendarEventDeleter, topicMessageDispatcher) {
+    $scope.deleteEvent = function(event) {
+        calendarEventDeleter(event, {
+            success: function() {
+                topicMessageDispatcher.fire('calendar.event.deleted', event);
+            }
+        });
+    };
 }
