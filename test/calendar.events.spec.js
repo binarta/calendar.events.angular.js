@@ -469,6 +469,7 @@ describe('calendar.events', function () {
 
         describe('on update', function() {
             var hidden = false;
+            var updatedEvent = {id:'id', field:'value', field2:'value2'};
 
             beforeEach(inject(function(calendarEvents) {
                 $scope.hide = function() {
@@ -476,7 +477,7 @@ describe('calendar.events', function () {
                 };
                 calendarEvents.push({id:'id', field:'old', field2:'old2'});
                 calendarEvents.push({id:'id2', field:'old', field2:'old2'});
-                $scope.updateEvent({id:'id', field:'value', field2:'value2'});
+                $scope.updateEvent(updatedEvent);
             }));
 
             it('then the event is updated', inject(function(calendarEvents) {
@@ -500,8 +501,8 @@ describe('calendar.events', function () {
                 });
 
                 it('notification is fired', inject(function(topicMessageDispatcherMock) {
-                    expect(topicMessageDispatcherMock['calendar.event.updated']).toEqual('ok');
-                }))
+                    expect(topicMessageDispatcherMock['calendar.event.updated']).toEqual(updatedEvent);
+                }));
             });
         });
     });

@@ -134,7 +134,7 @@ function UpdateCalendarEventController($scope, calendarEventUpdater, topicMessag
         calendarEventUpdater(event, $scope, {
             success: function() {
                 $scope.hide();
-                topicMessageDispatcher.fire('calendar.event.updated', 'ok');
+                topicMessageDispatcher.fire('calendar.event.updated', event);
             }
         });
     }
