@@ -178,10 +178,6 @@ describe('calendar.events', function () {
                         it('then the template is reset', function() {
                             expect($scope.eventTemplate).toEqual({});
                         });
-
-                        it('and the ui is hidden', function() {
-                            expect(connector.hidden).toBeTruthy();
-                        })
                     });
                 });
 
@@ -275,10 +271,6 @@ describe('calendar.events', function () {
                             metadata.presenter.success();
                         }));
 
-                        it('ui gets hidden', function() {
-                            expect(connector.hidden).toBeTruthy();
-                        });
-
                         it('ui connector refreshes', function() {
                             expect(connector.refreshed).toBeTruthy();
                         })
@@ -338,8 +330,9 @@ describe('calendar.events', function () {
 
     describe('CalendarEventWriterHelperFactory', function() {
         var helper;
-        var createPresenter = jasmine.createSpy('createPresenter');
+        var createPresenter = jasmine.createSpyObj('createPresenter', ['success']);
         var createAnotherPresenter = jasmine.createSpy('createAnotherPresenter');
+        var createArgs = jasmine.createSpyObj('createArgs', ['success']);
 
         beforeEach(inject(function(calendarEventWriterHelper) {
             helper = calendarEventWriterHelper;
@@ -361,7 +354,22 @@ describe('calendar.events', function () {
             }));
 
             it('then the callback gets passed to the writer', inject(function(metadata) {
-                expect(metadata.presenter).toEqual(createPresenter);
+                metadata.presenter.success();
+
+                expect(createPresenter.success).toHaveBeenCalled();
+            }));
+
+            it('with extra success args', inject(function(metadata) {
+                $scope.createEvent(createArgs);
+                metadata.presenter.success();
+
+                expect(createArgs.success).toHaveBeenCalled();
+            }));
+
+            it('when no presenter', inject(function(metadata) {
+                helper.create($scope);
+                $scope.createEvent();
+                metadata.presenter.success();
             }));
         });
 
@@ -409,33 +417,6 @@ describe('calendar.events', function () {
             })
         });
 
-        describe('on create', function() {
-            var hidden = false;
-
-            beforeEach(function() {
-                $scope.hide = function() {
-                    hidden = true;
-                };
-                $scope.eventTemplate = {};
-                $scope.locale = 'locale';
-                $scope.createEvent();
-            });
-
-            describe('when presenting success', function() {
-                beforeEach(inject(function(metadata) {
-                    metadata.presenter.success();
-                }));
-
-                it('ui is hidden', function() {
-                    expect(hidden).toBeTruthy();
-                });
-
-                it('redirect to program', inject(function($location) {
-                    expect($location.path()).toEqual('/' + $scope.locale + '/festival/program');
-                }));
-            });
-        });
-
         describe('on create another', function() {
             beforeEach(function() {
                 $scope.eventTemplate = {type:'type'};
@@ -469,7 +450,13 @@ describe('calendar.events', function () {
 
         describe('on update', function() {
             var hidden = false;
-            var updatedEvent = {id:'id', field:'value', field2:'value2'};
+            var updatedSuccessCalled;
+            var updatedArgs = {
+                event: {id:'id', field:'value', field2:'value2'},
+                success: function () {
+                    updatedSuccessCalled = true;
+                }
+            };
 
             beforeEach(inject(function(calendarEvents) {
                 $scope.hide = function() {
@@ -477,7 +464,8 @@ describe('calendar.events', function () {
                 };
                 calendarEvents.push({id:'id', field:'old', field2:'old2'});
                 calendarEvents.push({id:'id2', field:'old', field2:'old2'});
-                $scope.updateEvent(updatedEvent);
+
+                $scope.updateEvent(updatedArgs);
             }));
 
             it('then the event is updated', inject(function(calendarEvents) {
@@ -496,12 +484,12 @@ describe('calendar.events', function () {
                     metadata.presenter.success();
                 }));
 
-                it('hide ui', function() {
-                    expect(hidden).toBeTruthy();
+                it('args.success is executed', function () {
+                    expect(updatedSuccessCalled).toBeTruthy();
                 });
 
                 it('notification is fired', inject(function(topicMessageDispatcherMock) {
-                    expect(topicMessageDispatcherMock['calendar.event.updated']).toEqual(updatedEvent);
+                    expect(topicMessageDispatcherMock['calendar.event.updated']).toEqual(updatedArgs.event);
                 }));
             });
         });

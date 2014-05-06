@@ -1,7 +1,7 @@
 angular.module('calendar.events', ['calendar.events.sources'])
     .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'topicRegistry', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', ListCalendarEventsController])
     .controller('ViewCalendarEventController', ['$scope', 'isCatalogItemPredicate', 'calendarEventViewer', ViewCalendarEventController])
-    .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', '$location', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', AddCalendarEventController])
+    .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', AddCalendarEventController])
     .controller('UpdateCalendarEventController', ['$scope', 'calendarEventUpdater', 'topicMessageDispatcher', UpdateCalendarEventController])
     .controller('DeleteCalendarEventController', ['$scope', 'calendarEventDeleter', 'topicMessageDispatcher', DeleteCalendarEventController])
     .factory('isCatalogItemPredicate', [IsCatalogItemPredicateFactory])
@@ -48,7 +48,6 @@ function ListCalendarEventsController($injector, $scope, calendarEventSourceFact
             $scope.updateEvent = function(event) {
                 calendarEventUpdater(event, $scope, {
                     success: function() {
-                        $scope.hide();
                         connector.refresh();
                     }
                 });
@@ -58,7 +57,6 @@ function ListCalendarEventsController($injector, $scope, calendarEventSourceFact
                 calendarEventWriterHelper.create($scope, {success: function() {
                     connector.renderEvent($scope.eventTemplate);
                     $scope.resetTemplate();
-                    $scope.hide();
                 }});
                 calendarEventWriterHelper.createAnother($scope, {success: function() {
                     connector.renderEvent($scope.eventTemplate);
@@ -81,11 +79,8 @@ function ViewCalendarEventController($scope, isCatalogItemPredicate, calendarEve
     $scope.isCatalogItem = isCatalogItemPredicate;
 }
 
-function AddCalendarEventController($scope, topicMessageDispatcher, $location, isCatalogItemPredicate, calendarEventWriterHelper, addCalendarEventPresenter) {
-    calendarEventWriterHelper.create($scope, {success: function() {
-        $scope.hide();
-        $location.path($scope.locale + '/festival/program');
-    }});
+function AddCalendarEventController($scope, topicMessageDispatcher, isCatalogItemPredicate, calendarEventWriterHelper, addCalendarEventPresenter) {
+    calendarEventWriterHelper.create($scope);
 
     calendarEventWriterHelper.createAnother($scope, {success: function() {
         var type = $scope.eventTemplate.type;
@@ -117,8 +112,11 @@ function IsCatalogItemPredicateFactory() {
 function CalendarEventWriterHelperFactory(calendarEventWriter) {
     return {
         create: function($scope, presenter) {
-            $scope.createEvent = function() {
-                calendarEventWriter($scope.eventTemplate, $scope, presenter);
+            $scope.createEvent = function(args) {
+                calendarEventWriter($scope.eventTemplate, $scope, {success: function () {
+                    if(presenter && presenter.success) presenter.success();
+                    if(args && args.success) args.success();
+                }});
             }
         },
         createAnother: function($scope, presenter) {
@@ -130,11 +128,11 @@ function CalendarEventWriterHelperFactory(calendarEventWriter) {
 }
 
 function UpdateCalendarEventController($scope, calendarEventUpdater, topicMessageDispatcher) {
-    $scope.updateEvent = function(event) {
-        calendarEventUpdater(event, $scope, {
+    $scope.updateEvent = function(args) {
+        calendarEventUpdater(args.event, $scope, {
             success: function() {
-                $scope.hide();
-                topicMessageDispatcher.fire('calendar.event.updated', event);
+                if(args.success) args.success();
+                topicMessageDispatcher.fire('calendar.event.updated', args.event);
             }
         });
     }
