@@ -3,6 +3,7 @@ describe('calendar.events', function () {
     var permissionCheck;
     var presenter;
 
+    angular.module('checkpoint', []);
     beforeEach(module('calendar.events'));
     beforeEach(module('calendar.events.mock.ui'));
     beforeEach(module('notifications'));

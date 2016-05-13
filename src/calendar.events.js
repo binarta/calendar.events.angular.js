@@ -1,5 +1,5 @@
-angular.module('calendar.events', ['calendar.events.sources'])
-    .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'topicRegistry', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', ListCalendarEventsController])
+angular.module('calendar.events', ['calendar.events.sources', 'checkpoint', 'notifications'])
+    .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', ListCalendarEventsController])
     .controller('ViewCalendarEventController', ['$scope', 'isCatalogItemPredicate', 'calendarEventViewer', ViewCalendarEventController])
     .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', AddCalendarEventController])
     .controller('UpdateCalendarEventController', ['$scope', 'calendarEventUpdater', 'topicMessageDispatcher', UpdateCalendarEventController])
@@ -7,7 +7,7 @@ angular.module('calendar.events', ['calendar.events.sources'])
     .factory('isCatalogItemPredicate', [IsCatalogItemPredicateFactory])
     .factory('calendarEventWriterHelper', ['calendarEventWriter', CalendarEventWriterHelperFactory]);
 
-function ListCalendarEventsController($injector, $scope, calendarEventSourceFactory, calendarEventDeleter, topicRegistry, activeUserHasPermission, calendarEventUpdater, calendarEventWriterHelper) {
+function ListCalendarEventsController($injector, $scope, calendarEventSourceFactory, calendarEventDeleter, activeUserHasPermission, calendarEventUpdater, calendarEventWriterHelper) {
     $scope.resetTemplate = function () {
         $scope.eventTemplate = {};
     };
