@@ -1,13 +1,13 @@
-angular.module('calendar.events', ['calendar.events.sources', 'checkpoint', 'notifications'])
-    .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', ListCalendarEventsController])
+angular.module('calendar.events', ['calendar.events.sources', 'checkpoint', 'notifications', 'angularMoment'])
+    .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', 'moment', ListCalendarEventsController])
     .controller('ViewCalendarEventController', ['$scope', 'isCatalogItemPredicate', 'calendarEventViewer', ViewCalendarEventController])
-    .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', AddCalendarEventController])
+    .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', 'moment', AddCalendarEventController])
     .controller('UpdateCalendarEventController', ['$scope', 'calendarEventUpdater', 'topicMessageDispatcher', UpdateCalendarEventController])
     .controller('DeleteCalendarEventController', ['$scope', 'calendarEventDeleter', 'topicMessageDispatcher', DeleteCalendarEventController])
     .factory('isCatalogItemPredicate', [IsCatalogItemPredicateFactory])
     .factory('calendarEventWriterHelper', ['calendarEventWriter', CalendarEventWriterHelperFactory]);
 
-function ListCalendarEventsController($injector, $scope, calendarEventSourceFactory, calendarEventDeleter, activeUserHasPermission, calendarEventUpdater, calendarEventWriterHelper) {
+function ListCalendarEventsController($injector, $scope, calendarEventSourceFactory, calendarEventDeleter, activeUserHasPermission, calendarEventUpdater, calendarEventWriterHelper, moment) {
     $scope.resetTemplate = function () {
         $scope.eventTemplate = {};
     };
@@ -79,7 +79,7 @@ function ViewCalendarEventController($scope, isCatalogItemPredicate, calendarEve
     $scope.isCatalogItem = isCatalogItemPredicate;
 }
 
-function AddCalendarEventController($scope, topicMessageDispatcher, isCatalogItemPredicate, calendarEventWriterHelper, addCalendarEventPresenter) {
+function AddCalendarEventController($scope, topicMessageDispatcher, isCatalogItemPredicate, calendarEventWriterHelper, addCalendarEventPresenter, moment) {
     calendarEventWriterHelper.create($scope);
 
     calendarEventWriterHelper.createAnother($scope, {success: function() {
