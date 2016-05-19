@@ -1,4 +1,4 @@
-angular.module('calendar.events', ['calendar.events.sources', 'checkpoint', 'notifications', 'angularMoment'])
+angular.module('calendar.events', ['calendar.events.sources', 'checkpoint', 'notifications', 'momentx'])
     .controller('ListCalendarEventsController', ['$injector', '$scope', 'calendarEventSourceFactory', 'calendarEventDeleter', 'activeUserHasPermission', 'calendarEventUpdater', 'calendarEventWriterHelper', 'moment', ListCalendarEventsController])
     .controller('ViewCalendarEventController', ['$scope', 'isCatalogItemPredicate', 'calendarEventViewer', ViewCalendarEventController])
     .controller('AddCalendarEventController', ['$scope', 'topicMessageDispatcher', 'isCatalogItemPredicate', 'calendarEventWriterHelper', 'addCalendarEventPresenter', 'moment', AddCalendarEventController])
