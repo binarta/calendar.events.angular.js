@@ -1,7 +1,8 @@
 {
   "name": "binarta.calendar.events.angular",
   "main": [
-    "./src/calendar.events.js"
+    "./src/calendar.events.js",
+    "./sources.json"
   ],
   "dependencies": {
     "binarta.angularx": "0.*.*",
