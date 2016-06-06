@@ -1,16 +1,16 @@
 describe('calendar.events', function () {
-    var $scope, ctrl, events, topicRegistry;
+    var $scope, ctrl, events, topicRegistry, moment;
     var permissionCheck;
     var presenter;
 
     angular.module('checkpoint', []);
     beforeEach(module('calendar.events'));
     beforeEach(module('calendar.events.mock.ui'));
-    beforeEach(module('notifications'));
-    beforeEach(inject(function($rootScope, calendarEvents, topicRegistryMock) {
+    beforeEach(inject(function($rootScope, calendarEvents, topicRegistryMock, _moment_) {
         $scope = $rootScope.$new();
         events = calendarEvents;
         topicRegistry = topicRegistryMock;
+        moment = _moment_;
         permissionCheck = jasmine.createSpy('activeHasUserPermission');
         presenter = jasmine.createSpy('presenter');
     }));
@@ -48,20 +48,24 @@ describe('calendar.events', function () {
             });
 
             describe('when showing the create event ui', function() {
-                var date = moment().hour(1);
+                var date;
                 var allDay = true;
+
+                beforeEach(function () {
+                    var date = moment().hour(1);
+                });
 
                 function show() {
                     $scope.showCreateEvent(date, allDay, presenter);
                 }
 
                 function hasPermission() {
-                    permissionCheck.calls[0].args[0].yes();
+                    permissionCheck.calls.first().args[0].yes();
                 }
 
                 function permissionChecked() {
                     it('permission checker is called for calendar.event.add', function() {
-                        expect(permissionCheck.calls[0].args[1]).toEqual('calendar.event.add');
+                        expect(permissionCheck.calls.first().args[1]).toEqual('calendar.event.add');
                     });
                 }
 
@@ -112,7 +116,7 @@ describe('calendar.events', function () {
                         endDateAddsOneHour();
 
                         it('and presenter gets called', function() {
-                            expect(presenter.calls[0]).toBeDefined();
+                            expect(presenter.calls.first()).toBeDefined();
                         });
 
                         describe('when event is not all day', function() {
@@ -130,7 +134,7 @@ describe('calendar.events', function () {
 
                     describe('and user does not have permission', function() {
                         beforeEach(function() {
-                            permissionCheck.calls[0].args[0].no();
+                            permissionCheck.calls.first().args[0].no();
                         });
 
                         it('nothing happens', function() {
@@ -296,8 +300,8 @@ describe('calendar.events', function () {
             });
 
             it('viewer is called', function() {
-                expect(viewer.calls[0].args[0]).toEqual(id);
-                expect(viewer.calls[0].args[1]).toEqual($scope);
+                expect(viewer.calls.first().args[0]).toEqual(id);
+                expect(viewer.calls.first().args[1]).toEqual($scope);
             });
         });
 
@@ -414,7 +418,7 @@ describe('calendar.events', function () {
             });
 
             it('presenter is called', function() {
-                expect(presenter.calls[0].args[0]).toEqual($scope);
+                expect(presenter.calls.first().args[0]).toEqual($scope);
             })
         });
 
@@ -524,86 +528,3 @@ describe('calendar.events', function () {
         });
     });
 });
-
-angular.module('calendar.events.mock.ui', [])
-    .factory('ui', function() {
-        return {};
-    })
-    .factory('mockUIConnector', function(ui) {
-        return function(connect) {
-            var spy = {eventSources:[]};
-            var connector = {
-                addSource:function(source) {
-                    spy.eventSources.push(source);
-                },
-                useWindowSize:function(size) {
-                    spy.windowSize = size;
-                },
-                renderEvent:function(evt) {
-                    spy.rendered = evt;
-                },
-                openEvent:function(evt) {
-                    spy.opened = evt;
-                },
-                removeEvent:function(evt) {
-                    spy.removed = evt;
-                },
-                refresh:function() {
-                    spy.refreshed = true;
-                }
-            };
-            connect(connector);
-            spy.$scope = connector.$scope;
-            ui.connector = spy;
-            spy.$scope.hide = function() {
-                spy.hidden = true;
-            }
-        }
-    });
-
-angular.module('calendar.events.sources', [])
-    .factory('calendarEventSourceFactory', function() {
-        return function(it) {
-            return it.id + '-loader';
-        }
-    })
-    .factory('calendarEvents', function() {
-        return [];
-    })
-    .factory('idgen', function() {
-        var id = 0;
-        return function() {
-            return id++;
-        }
-    })
-    .factory('calendarEventWriter', function(calendarEvents, idgen, metadata) {
-        return function(evt, $scope, p) {
-            metadata.$scope = $scope;
-            metadata.presenter = p;
-            evt.id = idgen();
-            calendarEvents.push(evt);
-        }
-    })
-    .factory('metadata', function() {
-        return {};
-    })
-    .factory('calendarEventDeleter', function(calendarEvents, metadata) {
-        return function(args, presenter) {
-            metadata.presenter = presenter;
-            calendarEvents.splice(calendarEvents.reduce(function (p, c, i) {
-                return c.id == args.id ? i : p;
-            }, -1), 1);
-        }
-    })
-    .factory('calendarEventUpdater', function(calendarEvents, metadata) {
-        return function(event, $scope, presenter) {
-            metadata.$scope = $scope;
-            metadata.presenter = presenter;
-            var index = calendarEvents.reduce(function(previous, current, index) {
-                return current.id == event.id ? index : previous;
-            }, -1);
-            Object.keys(event).forEach(function(key) {
-                calendarEvents[index][key] = event[key];
-            });
-        }
-    });
